@@ -30,11 +30,11 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiServer.h>
+#include <NTPClient.h> // Manual NTP so we can force an updated time.
 #include <WiFiUdp.h> // before lwip RE: https://github.com/espressif/arduino-esp32/issues/4405
 #include <ESP32Ping.h>
 
 #include "CommandHandler.h"
-
 
 #ifdef LWIP_PROVIDE_ERRNO
 int errno;
@@ -56,6 +56,12 @@ uint8_t socketTypes[MAX_SOCKETS];
 WiFiClient tcpClients[MAX_SOCKETS];
 WiFiUDP udps[MAX_SOCKETS];
 WiFiServer tcpServers[MAX_SOCKETS];
+
+// NTP Stuff
+WiFiUDP ntpUDP;
+// By default 'pool.ntp.org' is used with 60 seconds update interval and no offset. (Upadte only happens if .update() is called!)
+NTPClient timeClient(ntpUDP);
+
 
 
 int setNet(const uint8_t command[], uint8_t response[])
@@ -231,18 +237,17 @@ int setApPassPhrase(const uint8_t command[], uint8_t response[])
   return 6;
 }
 
-//extern void setDebug(int debug);
+extern void setDebug(int debug);
 
 int setDebug(const uint8_t command[], uint8_t response[])
 {
-  // TODO: Not implemented
-  //setDebug(command[4]);
+    setDebug(command[4]);
 
-  response[2] = 1; // number of parameters
-  response[3] = 1; // parameter 1 length
-  response[4] = 1;
+    response[2] = 1; // number of parameters
+    response[3] = 1; // parameter 1 length
+    response[4] = 1;
 
-  return 6;
+    return 6;
 }
 
 #ifndef ESP32C3
@@ -790,7 +795,12 @@ int getRemoteData(const uint8_t command[], uint8_t response[])
 // TODO: Fix get time.
 int getTime(const uint8_t command[], uint8_t response[])
 {
-  unsigned long now = 0; //WiFi.getTime();
+    unsigned long now = 0;
+    if (timeClient.forceUpdate()) {
+        now = timeClient.getEpochTime();
+        Serial.printf("Time get as: %d\n", now);
+    } else
+        Serial.println("Failed to obtain time");
 
   response[2] = 1; // number of parameters
   response[3] = sizeof(now); // parameter 1 length

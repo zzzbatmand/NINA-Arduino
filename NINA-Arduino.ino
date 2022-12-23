@@ -12,11 +12,19 @@ void setupWiFi();
 
 int debug = 1;
 
-void setup() {
+void setDebug(int d) {
+    debug = d;
+
     if (debug) {
         Serial.begin(115200);
         Serial.println("Start");
+    } else {
+        Serial.end();
     }
+}
+
+void setup() {
+    setDebug(debug);
 
     setupWiFi();
 }
