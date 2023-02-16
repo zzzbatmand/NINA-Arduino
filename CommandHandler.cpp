@@ -41,8 +41,6 @@
 int errno;
 #endif
 
-//#define ESP32C3
-
 // #ifndef LWIP_SETGETSOCKOPT_MAXOPTLEN
 // #define LWIP_SETGETSOCKOPT_MAXOPTLEN 16
 // #endif
@@ -252,7 +250,7 @@ int setDebug(const uint8_t command[], uint8_t response[])
     return 6;
 }
 
-#ifndef ESP32C3
+#ifdef VSPI_HOST // ESP32 (NOT AVAILABLE IN ESP32C3)
 extern "C" {
   uint8_t temprature_sens_read();
 }
@@ -260,10 +258,10 @@ extern "C" {
 
 int getTemperature(const uint8_t command[], uint8_t response[])
 {
-    #ifdef ESP32C3
-    float temperature = 0;
-    #else
+    #ifdef VSPI_HOST // ESP32 (NOT AVAILABLE IN ESP32C3)
     float temperature = (temprature_sens_read() - 32) / 1.8;
+    #else
+    float temperature = 0;
     #endif
 
     response[2] = 1; // number of parameters

@@ -112,10 +112,9 @@ void SPISClass::handleSetupComplete()
   xSemaphoreGiveFromISR(_readySemaphore, NULL);
 }
 
-//#define ESP32C3
 
-#ifdef ESP32C3
-SPISClass SPIS(SPI2_HOST, SPI_DMA_CH_AUTO, 5, 6, 4, 7, 18);
-#else
+#ifdef VSPI_HOST // ESP32
 SPISClass SPIS(VSPI_HOST, 1, 12, 23, 18, 5, 33);
+#else // ESP32C3
+SPISClass SPIS(SPI2_HOST, SPI_DMA_CH_AUTO, 5, 6, 4, 7, 18);
 #endif
