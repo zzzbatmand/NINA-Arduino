@@ -29,6 +29,7 @@
 #include <string.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h> // HTTPS / TLS
 #include <WiFiServer.h>
 #include <NTPClient.h> // Manual NTP so we can force an updated time.
 #include <WiFiUdp.h> // before lwip RE: https://github.com/espressif/arduino-esp32/issues/4405
@@ -54,6 +55,7 @@ IPAddress resolvedHostname;
 
 uint8_t socketTypes[MAX_SOCKETS];
 WiFiClient tcpClients[MAX_SOCKETS];
+WiFiClientSecure tlsClients[MAX_SOCKETS];
 WiFiUDP udps[MAX_SOCKETS];
 WiFiServer tcpServers[MAX_SOCKETS];
 
@@ -528,6 +530,8 @@ int availDataTcp(const uint8_t command[], uint8_t response[])
     }
   } else if (socketTypes[socket] == 0x01) {
     available = udps[socket].available();
+  } else if (socketTypes[socket] == 0x02) {
+    available = tlsClients[socket].available();
   }
 
   response[2] = 1; // number of parameters
@@ -557,6 +561,12 @@ int getDataTcp(const uint8_t command[], uint8_t response[])
       response[4] = udps[socket].peek();
     } else {
       response[4] = udps[socket].read();
+    }
+  } else if (socketTypes[socket] == 0x02) {
+    if (peek) {
+      response[4] = tlsClients[socket].peek();
+    } else {
+      response[4] = tlsClients[socket].read();
     }
   }
 
@@ -632,6 +642,29 @@ int startClientTcp(const uint8_t command[], uint8_t response[])
 
       return 4;
     }
+  } else if (type == 0x02) {
+    int result;
+    tlsClients[socket].setInsecure(); // skip verification // TODO: Hack solution, Don't use this!
+
+    if (host[0] != '\0') {
+      result = tlsClients[socket].connect(host, port);
+    } else {
+      result = tlsClients[socket].connect(ip, port);
+    }
+
+    if (result) {
+      socketTypes[socket] = 0x02;
+
+      response[2] = 1; // number of parameters
+      response[3] = 1; // parameter 1 length
+      response[4] = 1;
+
+      return 6;
+    } else {
+      response[2] = 0; // number of parameters
+
+      return 4;
+    }
   } else {
     response[2] = 0; // number of parameters
 
@@ -647,6 +680,8 @@ int stopClientTcp(const uint8_t command[], uint8_t response[])
     tcpClients[socket].stop();
   } else if (socketTypes[socket] == 0x01) {
     udps[socket].stop();
+  } else if (socketTypes[socket] == 0x02) {
+    tlsClients[socket].stop();
   }
   socketTypes[socket] = 255;
 
@@ -665,6 +700,8 @@ int getClientStateTcp(const uint8_t command[], uint8_t response[])
   response[3] = 1; // parameter 1 length
 
   if ((socketTypes[socket] == 0x00) && tcpClients[socket].connected()) {
+    response[4] = 4;
+  } else if ((socketTypes[socket] == 0x02) && tlsClients[socket].connected()) {
     response[4] = 4;
   } else {
     socketTypes[socket] = 255;
@@ -778,6 +815,9 @@ int getRemoteData(const uint8_t command[], uint8_t response[])
   } else if (socketTypes[socket] == 0x01) {
     ip = udps[socket].remoteIP();
     port = udps[socket].remotePort();
+  } else if (socketTypes[socket] == 0x02) {
+    ip = tlsClients[socket].remoteIP();
+    port = tlsClients[socket].remotePort();
   }
 
   response[2] = 2; // number of parameters
@@ -858,6 +898,8 @@ int sendDataTcp(const uint8_t command[], uint8_t response[])
     written = tcpServers[socket].write(&command[8], length);
   } else if (socketTypes[socket] == 0x00) {
     written = tcpClients[socket].write(&command[8], length);
+  } else if (socketTypes[socket] == 0x02) {
+    written = tlsClients[socket].write(&command[8], length);
   }
 
   response[2] = 1; // number of parameters
@@ -880,6 +922,8 @@ int getDataBufTcp(const uint8_t command[], uint8_t response[])
     read = tcpClients[socket].read(&response[5], length);
   } else if (socketTypes[socket] == 0x01) {
     read = udps[socket].read(&response[5], length);
+  } else if (socketTypes[socket] == 0x02) {
+    read = tlsClients[socket].read(&response[5], length);
   }
 
   if (read < 0) {
