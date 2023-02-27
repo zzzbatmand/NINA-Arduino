@@ -10,7 +10,7 @@ uint8_t* responseBuffer;
 
 void setupWiFi();
 
-int debug = 0;
+int debug = 1;
 
 void setDebug(int d) {
     debug = d;
