@@ -113,8 +113,9 @@ void SPISClass::handleSetupComplete()
 }
 
 
-#ifdef VSPI_HOST // ESP32
+#ifdef CONFIG_IDF_TARGET_ESP32 // ESP32
 SPISClass SPIS(VSPI_HOST, 1, 12, 23, 18, 5, 33);
+//#elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 // TODO: Maybe add this also.
 #else // ESP32C3
 SPISClass SPIS(SPI2_HOST, SPI_DMA_CH_AUTO, 5, 6, 4, 7, 18);
 #endif
