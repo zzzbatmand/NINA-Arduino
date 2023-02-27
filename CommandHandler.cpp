@@ -138,7 +138,6 @@ int setIPconfig(const uint8_t command[], uint8_t response[])
   return 6;
 }
 
-// TODO: Not implemented
 int setDNSconfig(const uint8_t command[], uint8_t response[])
 {
   uint32_t dns1;
@@ -147,7 +146,8 @@ int setDNSconfig(const uint8_t command[], uint8_t response[])
   memcpy(&dns1, &command[6], sizeof(dns1));
   memcpy(&dns2, &command[11], sizeof(dns2));
 
-  //WiFi.setDNS(dns1, dns2);
+  // TOOD: Verify that this actually works.
+  WiFi.config(WiFi.localIP(), WiFi.gatewayIP(), WiFi.subnetMask(), dns1, dns2);
 
   response[2] = 1; // number of parameters
   response[3] = 1; // parameter 1 length
@@ -250,19 +250,9 @@ int setDebug(const uint8_t command[], uint8_t response[])
     return 6;
 }
 
-#ifdef VSPI_HOST // ESP32 (NOT AVAILABLE IN ESP32C3)
-extern "C" {
-  uint8_t temprature_sens_read();
-}
-#endif
-
 int getTemperature(const uint8_t command[], uint8_t response[])
 {
-    #ifdef VSPI_HOST // ESP32 (NOT AVAILABLE IN ESP32C3)
-    float temperature = (temprature_sens_read() - 32) / 1.8;
-    #else
-    float temperature = 0;
-    #endif
+    float temperature = temperatureRead();
 
     response[2] = 1; // number of parameters
     response[3] = sizeof(temperature); // parameter 1 length
